@@ -275,35 +275,32 @@ public class BoardDAOImpl implements BoardDAO {
 		PreparedStatement ps = null;
 		ResultSet rs = null;
 		BoardDTO boardDTO = null;
+		List<ReplyDTO> replyList = new ArrayList<>();
 
-		try
-		{
+		try {
 			con = DBManager.getConnection();
-			ps=con.prepareStatement("select * from board where board_no=?");
-			ps.setInt(1,boardNo);
-			// 부모 글 정보 조회
+			// 게시글 정보 조회
+			ps = con.prepareStatement("select * from board where board_no=?");
+			ps.setInt(1, boardNo);
+			rs = ps.executeQuery();
 
-			rs=ps.executeQuery();
-
-			if (rs.next())
-			{
-				boardDTO=new BoardDTO(rs.getInt("boardNo"),rs.getString("subject"),
-						rs.getString("writer"),rs.getString("content"),
-						rs.getString("board_date"));
-
-				 //부모 글 정보가 조회되었을 경우, 해당 글의 댓글 정보도 가져
-			}
-			else
-			{
+			if (rs.next()) {
+				boardDTO = new BoardDTO(
+						rs.getInt("board_no"), // 컬럼명이 맞아야 합니다
+						rs.getString("subject"),
+						rs.getString("writer"),
+						rs.getString("content"),
+						rs.getString("board_date")
+				);
+				// 댓글 정보 조회
+				replyList = replySelect(con, boardNo); // 댓글 목록을 조회하는 메소드 호출
+				boardDTO.setRepliesList(replyList); // 댓글 목록을 BoardDTO에 설정
+			} else {
 				throw new SearchWrongException("해당 글이 존재하지 않습니다.");
 			}
-		}
-		catch (SQLException e)
-		{
+		} catch (SQLException e) {
 			throw new SearchWrongException("DB에서 데이터를 조회하는 중 문제가 발생했습니다");
-		}
-		finally
-		{
+		} finally {
 			DBManager.dbClose(con, ps, rs);
 		}
 
@@ -313,33 +310,34 @@ public class BoardDAOImpl implements BoardDAO {
 	/***
 	 * 부모글에 해당하는 댓글 정보 가져오기
 	 */
-	private List<ReplyDTO> replySelect(Connection con, int boardNo) throws SQLException
-	{
+	private List<ReplyDTO> replySelect(Connection con, int boardNo) throws SQLException {
 		PreparedStatement ps = null;
 		ResultSet rs = null;
 		List<ReplyDTO> replyList = new ArrayList<>();
-		String sql="select * from board where board_no=?";
+		String sql = "select * from reply where board_no=?"; // 댓글을 조회하는 SQL 쿼리로 수정
 
-		try
-		{
-			ps=con.prepareStatement(sql);
-			ps.setInt(1,boardNo);
+		try {
+			ps = con.prepareStatement(sql);
+			ps.setInt(1, boardNo);
 
-			rs=ps.executeQuery();
+			rs = ps.executeQuery();
 
-			while (rs.next())
-			{
-				ReplyDTO replyDTO = new ReplyDTO(rs.getInt(1),rs.getString(2),rs.getInt(3),rs.getString(4));
+			while (rs.next()) {
+				ReplyDTO replyDTO = new ReplyDTO(
+						rs.getInt("reply_no"), // 컬럼명이 맞아야 합니다
+						rs.getString("reply_content"),
+						rs.getInt("board_no"),
+						rs.getString("reply_date")
+				);
 				replyList.add(replyDTO);
 			}
-		}
-		finally
-		{
-			DBManager.dbClose(null, ps, rs); // Connection은 외부에서 닫힘, 위에함수에서 닫힘
+		} finally {
+			DBManager.dbClose(null, ps, rs); // Connection은 외부에서 닫힘
 		}
 
 		return replyList;
 	}
+
 
 
 }
